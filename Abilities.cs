@@ -1,94 +1,81 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Game2;
 
-namespace Game2
+namespace Abilities
 {
-    public class Abilities
+    public abstract class Ability
     {
-        public abstract class Ability
+        public string Name = "Ability Name";
+        public Unit UnitWithAbility { get; protected set; }
+        public Ability(string name)
         {
-            public string Name = "Ability Name";
-            public Unit UnitWithAbility { get; protected set; }
-            public Ability(string name, Unit unitWithAbility)
-            {
-                Name = name;
-                UnitWithAbility = unitWithAbility;
-                UnitWithAbility.Abilities.Add(this);
-                GameEventHandler.UnitDied += UnitWithAbilityDied;
-            }
+            Name = name;
+        }
+        public virtual void Apply(Unit unitWithAbility)
+        {
+            UnitWithAbility = unitWithAbility;
+            UnitWithAbility.Abilities.Add(this);
+            GameEventHandler.SpecificUnitDied[UnitWithAbility] += UnitWithAbilityDied;
+        }
+        public abstract void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e);
+    }
 
-            public abstract void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e);
-
+    public class Avenger : Ability
+    {
+        public int WeaponStrengthGain;
+        public Avenger(int weaponStrengthGain) : base("Avenger")
+        {
+            WeaponStrengthGain = weaponStrengthGain;
+            GameEventHandler.UnitAppliedDamage += GainStrengthWhenAllyRecievesDamage;
         }
 
-        public class Avenger : Ability
+        public void GainStrengthWhenAllyRecievesDamage(object sender, OnUnitAppliedDamageEventArgs e)
         {
-            public int WeaponStrengthGain;
-            public Avenger(Unit unitWithAbility, int weaponStrengthGain) : base("Avenger", unitWithAbility)
+            if (!e.DamagedUnit.Equals(UnitWithAbility))
             {
-                WeaponStrengthGain = weaponStrengthGain;
-                GameEventHandler.UnitAppliedDamage += GainStrengthWhenAllyRecievesDamage;
+                UnitWithAbility.AddWeaponStrength(WeaponStrengthGain);
             }
-
-            public void GainStrengthWhenAllyRecievesDamage(object sender, OnUnitAppliedDamageEventArgs e)
-            {
-                if (!e.DamagedUnit.Equals(UnitWithAbility))
-                {
-                    UnitWithAbility.AddWeaponStrength(WeaponStrengthGain);
-                }
-            }
-
-            public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
-            {
-                if (e.DeadUnit == UnitWithAbility)
-                {
-                    GameEventHandler.UnitAppliedDamage -= GainStrengthWhenAllyRecievesDamage;
-                    UnitWithAbility = null;
-                }
-            }
-
         }
-        public class DeathAnouncer : Ability
+        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
         {
-            public DeathAnouncer(Unit unitWithAbility) : base("Death Anouncer", unitWithAbility)
-            {
-            }
-
-            public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
-            {
-                if (e.DeadUnit == UnitWithAbility)
-                {
-                    Console.WriteLine("Important Unit Died!");
-                    UnitWithAbility = null;
-                }
-            }
-
+            GameEventHandler.UnitAppliedDamage -= GainStrengthWhenAllyRecievesDamage;
+            UnitWithAbility = null;
         }
 
-        public class Shielder : Ability
-        {
-            public Shielder(Unit unitWithAbility) : base("Shielder", unitWithAbility)
-            {
-                GameEventHandler.UnitRecievedDamage += ShieldAllyFromEnergyDamage;
-            }
+    }
+    public class DeathAnouncer : Ability
+    {
+        public DeathAnouncer() : base("Death Anouncer") { }
 
-            public void ShieldAllyFromEnergyDamage(object sender, OnUnitRecievedDamageEventArgs e)
+        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
+        {
+            Console.WriteLine("Important Unit Died!");
+            UnitWithAbility = null;
+        }
+
+    }
+
+    public class Shielder : Ability
+    {
+        public Shielder() : base("Shielder")
+        {
+            GameEventHandler.UnitRecievedDamage += ShieldAllyFromEnergyDamage;
+        }
+
+        public void ShieldAllyFromEnergyDamage(object sender, OnUnitRecievedDamageEventArgs e)
+        {
+            if (!e.DamageWasRedirected && e.DamageDictionary.ContainsKey(DamageType.Energy) && !e.DamagedUnit.Equals(UnitWithAbility))
             {
-                if (!e.DamageWasRedirected && e.DamageDictionary.ContainsKey(DamageType.Energy) && !e.DamagedUnit.Equals(UnitWithAbility))
-                {
-                    UnitWithAbility.DealDamage(DamageType.Energy, e.DamageDictionary[DamageType.Energy], true);
-                    e.DamageDictionary.Remove(DamageType.Energy);
-                }
+                UnitWithAbility.DealDamage(DamageType.Energy, e.DamageDictionary[DamageType.Energy], true);
+                e.DamageDictionary.Remove(DamageType.Energy);
             }
-            public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
-            {
-                if (e.DeadUnit == UnitWithAbility)
-                {
-                    GameEventHandler.UnitRecievedDamage -= ShieldAllyFromEnergyDamage;
-                    UnitWithAbility = null;
-                }
-            }
+        }
+        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
+        {
+            GameEventHandler.UnitRecievedDamage -= ShieldAllyFromEnergyDamage;
+            UnitWithAbility = null;
         }
     }
 }

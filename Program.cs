@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Abilities;
 
 namespace Game2
 {
@@ -17,17 +18,8 @@ namespace Game2
             GameEventHandler.UnitDied += HandleUnitDeath;
             int newAvengers = 0;
             var im = new HashSet<DamageType> { DamageType.Fire };
-            Unit originalAvenger = CreateAvenger(this, "Bob the Avenger", 10, null, 2);
-            foreach (Abilities.Ability a in originalAvenger.Abilities)
-            {
-                if (a.Name == "Avenger")
-                {
-                    Abilities.Avenger avenger = (Abilities.Avenger)a;
-                    avenger.WeaponStrengthGain = 2;
-                }
-            }
-            var defendingUnit = CreateUnit(this, "Example", 10, im);
-            new Abilities.DeathAnouncer(defendingUnit);
+            Unit originalAvenger = Unit.CreateUnit(this, "Bob the OG Avenger", 10, null, 2, new HashSet<Ability> { new Abilities.Avenger(2) });
+            var defendingUnit = Unit.CreateUnit(this, "Example", 10, im, 5, new HashSet<Ability> { new Abilities.DeathAnouncer() });
             Console.WriteLine("Press 'x' to do fire damage, 'y' to do energy damage, 'z' to do dark damage");
             foreach (Unit u in units)
             {
@@ -50,11 +42,10 @@ namespace Game2
                         break;
                     case 'b':
                         newAvengers++;
-                        CreateAvenger(this, $"Dave {newAvengers} the Avenger", 10, null, 1);
+                        Unit u = Unit.CreateUnit(this, $"Dave {newAvengers} the Avenger", 10, null, 1, new HashSet<Ability> { new Abilities.Avenger(1) });
                         break;
                     case 'c':
-                        var shielder = CreateUnit(this, "Shielder", 2, null, 0);
-                        new Abilities.Shielder(shielder);
+                        var shielder = Unit.CreateUnit(this, "Shielder", 2, null, 0, new HashSet<Ability> { new Abilities.Shielder() });
                         break;
                     default:
                         break;
@@ -64,21 +55,6 @@ namespace Game2
                     Console.WriteLine(u);
                 }
             }
-        }
-
-        public Unit CreateUnit(Program owner, string name, int health, HashSet<DamageType> immunities = null, int weaponStrength = 0)
-        {
-            Unit newUnit = new Unit(owner, name, health, immunities, weaponStrength);
-            GameEventHandler.OnUnitCreated(newUnit);
-            units.Add(newUnit);
-            return newUnit;
-        }
-
-        public Unit CreateAvenger(Program owner, string name, int health, HashSet<DamageType> immunities = null, int weaponStrength = 0)
-        {
-            Unit newUnit = CreateUnit(owner, name, health, immunities, weaponStrength);
-            new Abilities.Avenger(newUnit, 1);
-            return newUnit;
         }
 
         public void HandleUnitDeath(object sender, OnUnitDiedEventArgs e)
@@ -92,24 +68,35 @@ namespace Game2
     public class Unit
     {
         public readonly HashSet<DamageType> Immunities;
+        public HashSet<Abilities.Ability> Abilities;
 
-
-        public Unit(Program owner, string name, int health, HashSet<DamageType> immunities = null, int weaponStrength = 0, HashSet<Abilities.Ability> abilities = null)
+        public static Unit CreateUnit(Program owner, string name, int health, HashSet<DamageType> immunities = null, int weaponStrength = 0, HashSet<Ability> Abilities = null)
         {
-            immunities ??= new HashSet<DamageType>();
+            Unit newUnit = new Unit(owner, name, health, immunities, weaponStrength);
+            GameEventHandler.SpecificUnitDied.Add(newUnit, null);
+            GameEventHandler.OnUnitCreated(newUnit);
+            foreach (Ability a in Abilities ?? new HashSet<Ability>())
+            {
+                a.Apply(newUnit);
+            }
+            return newUnit;
+        }
+
+        private Unit(Program owner, string name, int health, HashSet<DamageType> immunities = null, int weaponStrength = 0)
+        {
+            Abilities = new HashSet<Ability>();
             Name = name;
             Health = health;
-            Immunities = immunities;
+            Immunities = immunities ?? new HashSet<DamageType>();
             WeaponStrength = weaponStrength;
             Owner = owner;
-            Abilities = abilities ?? new HashSet<Abilities.Ability>();
+            owner.units.Add(this);
         }
 
         public int Health { get; protected set; }
         public int WeaponStrength { get; protected set; }
         public string Name { get; }
         public Program Owner { get; private set; }
-        public HashSet<Abilities.Ability> Abilities;
 
         public void DealDamage(DamageType damage, int amt, bool damageWasRedirected = false)
         {

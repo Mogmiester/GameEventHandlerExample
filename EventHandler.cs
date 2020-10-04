@@ -10,6 +10,7 @@ namespace Game2
         public static EventHandler<OnUnitRecievedDamageEventArgs> UnitRecievedDamage;
         public static EventHandler<OnUnitAppliedDamageEventArgs> UnitAppliedDamage;
         public static EventHandler<OnUnitDiedEventArgs> UnitDied;
+        public static Dictionary<Unit, EventHandler<OnUnitDiedEventArgs>> SpecificUnitDied = new Dictionary<Unit, EventHandler<OnUnitDiedEventArgs>>();
 
         public static void OnUnitCreated(Unit createdUnit)
         {
@@ -27,6 +28,7 @@ namespace Game2
         }
         public static void OnUnitDied(Unit diedUnit)
         {
+            SpecificUnitDied[diedUnit]?.Invoke(null, new OnUnitDiedEventArgs(diedUnit));
             UnitDied?.Invoke(null, new OnUnitDiedEventArgs(diedUnit));
         }
     }
