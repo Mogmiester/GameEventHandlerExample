@@ -54,6 +54,7 @@ namespace Game2
                 {
                     Console.WriteLine(u);
                 }
+                Console.WriteLine();
             }
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using Game2;
 
@@ -22,13 +23,58 @@ namespace Abilities
         public abstract void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e);
     }
 
-    public class Avenger : Ability
+    public abstract class AbilityActingOnAppliedDamage : Ability
+    {
+        protected Action<object, OnUnitAppliedDamageEventArgs> ActionActingOnAppliedDamage;
+        public AbilityActingOnAppliedDamage(string name) : base(name)
+        {
+            GameEventHandler.UnitAppliedDamage += CallAction;
+        }
+        private void CallAction(object sender, OnUnitAppliedDamageEventArgs e)
+        {
+            if (ActionActingOnAppliedDamage is null) return;
+            ActionActingOnAppliedDamage(sender, e);
+        }
+
+        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
+        {
+            GameEventHandler.UnitAppliedDamage -= CallAction;
+            UnitWithAbility = null;
+        }
+    }
+
+    public abstract class AbilityActingOnRecievedDamage : Ability
+    {
+        protected Action<object, OnUnitRecievedDamageEventArgs> ActionActingOnAppliedDamage;
+        public AbilityActingOnRecievedDamage(string name) : base(name)
+        {
+            GameEventHandler.UnitRecievedDamage += CallAction;
+        }
+        private void CallAction(object sender, OnUnitRecievedDamageEventArgs e)
+        {
+            if (ActionActingOnAppliedDamage is null) return;
+            ActionActingOnAppliedDamage(sender, e);
+        }
+
+        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
+        {
+            GameEventHandler.UnitRecievedDamage -= CallAction;
+            UnitWithAbility = null;
+        }
+    }
+
+    public class Avenger : AbilityActingOnAppliedDamage
     {
         public int WeaponStrengthGain;
         public Avenger(int weaponStrengthGain) : base("Avenger")
         {
             WeaponStrengthGain = weaponStrengthGain;
-            GameEventHandler.UnitAppliedDamage += GainStrengthWhenAllyRecievesDamage;
+        }
+
+        public override void Apply(Unit unitWithAbility)
+        {
+            ActionActingOnAppliedDamage = GainStrengthWhenAllyRecievesDamage;
+            base.Apply(unitWithAbility);
         }
 
         public void GainStrengthWhenAllyRecievesDamage(object sender, OnUnitAppliedDamageEventArgs e)
@@ -38,12 +84,6 @@ namespace Abilities
                 UnitWithAbility.AddWeaponStrength(WeaponStrengthGain);
             }
         }
-        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
-        {
-            GameEventHandler.UnitAppliedDamage -= GainStrengthWhenAllyRecievesDamage;
-            UnitWithAbility = null;
-        }
-
     }
     public class DeathAnouncer : Ability
     {
@@ -57,11 +97,16 @@ namespace Abilities
 
     }
 
-    public class Shielder : Ability
+    public class Shielder : AbilityActingOnRecievedDamage
     {
         public Shielder() : base("Shielder")
         {
-            GameEventHandler.UnitRecievedDamage += ShieldAllyFromEnergyDamage;
+        }
+
+        public override void Apply(Unit unitWithAbility)
+        {
+            ActionActingOnAppliedDamage = ShieldAllyFromEnergyDamage;
+            base.Apply(unitWithAbility);
         }
 
         public void ShieldAllyFromEnergyDamage(object sender, OnUnitRecievedDamageEventArgs e)
@@ -71,11 +116,6 @@ namespace Abilities
                 UnitWithAbility.DealDamage(DamageType.Energy, e.DamageDictionary[DamageType.Energy], true);
                 e.DamageDictionary.Remove(DamageType.Energy);
             }
-        }
-        public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
-        {
-            GameEventHandler.UnitRecievedDamage -= ShieldAllyFromEnergyDamage;
-            UnitWithAbility = null;
         }
     }
 }
