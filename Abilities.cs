@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using Game2;
+using GameEventHandlerExample;
 
 namespace Abilities
 {
@@ -17,7 +17,7 @@ namespace Abilities
         public virtual void Apply(Unit unitWithAbility)
         {
             UnitWithAbility = unitWithAbility;
-            UnitWithAbility.Abilities.Add(this);
+            UnitWithAbility.AbilityList.Add(this);
             GameEventHandler.SpecificUnitDied[UnitWithAbility] += UnitWithAbilityDied;
         }
         public abstract void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e);
@@ -39,6 +39,7 @@ namespace Abilities
         public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
         {
             GameEventHandler.UnitAppliedDamage -= CallAction;
+            GameEventHandler.SpecificUnitDied[UnitWithAbility] -= UnitWithAbilityDied;
             UnitWithAbility = null;
         }
     }
@@ -59,6 +60,7 @@ namespace Abilities
         public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
         {
             GameEventHandler.UnitRecievedDamage -= CallAction;
+            GameEventHandler.SpecificUnitDied[UnitWithAbility] -= UnitWithAbilityDied;
             UnitWithAbility = null;
         }
     }
@@ -92,6 +94,7 @@ namespace Abilities
         public override void UnitWithAbilityDied(object sender, OnUnitDiedEventArgs e)
         {
             Console.WriteLine("Important Unit Died!");
+            GameEventHandler.SpecificUnitDied[UnitWithAbility] -= UnitWithAbilityDied;
             UnitWithAbility = null;
         }
 

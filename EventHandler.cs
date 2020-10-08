@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Game2
+namespace GameEventHandlerExample
 {
     public static class GameEventHandler
     {
