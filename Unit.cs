@@ -8,14 +8,13 @@ namespace GameEventHandlerExample
     public class Unit
     {
         public readonly HashSet<DamageType> Immunities;
-        public HashSet<Ability> AbilityList;
+        public HashSet<Ability> AbilityList = new HashSet<Ability>();
 
         public static Unit CreateUnit(Program owner, string name, int health, HashSet<DamageType> immunities = null, int weaponStrength = 0, HashSet<Ability> abilities = null)
         {
             Unit newUnit = new Unit(owner, name, health, immunities, weaponStrength);
             GameEventHandler.SpecificUnitDied.Add(newUnit, null);
-            newUnit.AbilityList = abilities ?? new HashSet<Ability>();
-            foreach (Ability a in newUnit.AbilityList)
+            foreach (Ability a in abilities ?? new HashSet<Ability>())
             {
                 a.Apply(newUnit);
             }
@@ -41,8 +40,8 @@ namespace GameEventHandlerExample
 
             protected set
             {
-                _health -= value;
-                if (_health < 0)
+                _health = value;
+                if (_health <= 0)
                 {
                     _health = 0;
                     UnitIsAlive = false;
@@ -63,7 +62,7 @@ namespace GameEventHandlerExample
 
         public void DealDamage(Dictionary<DamageType, int> damage, bool damageWasRedirected = false)
         {
-            if (Health > 0)
+            if (UnitIsAlive)
             {
                 int totalDamage = 0;
                 GameEventHandler.OnUnitRecievedDamage(this, damage, damageWasRedirected);
